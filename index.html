@@ -6,108 +6,448 @@
   <title>American Racer — JS Arcade</title>
   <style>
     :root{
-      --road:#2b2b2b; --line:#f5d142; --player:#2ecc71; --enemy:#e74c3c; --fuel:#3498db;
-      --ink:#fff; --muted:#aaa;
+      --road:#1f1f1f; --edge:#0e0e0e; --line:#f5d142;
+      --player:#21bf73; --enemy:#e74c3c; --fuel:#2d9cdb; --win:#cde8ff; --chrome:#eaeaea;
+      --ink:#fff; --muted:#aab0bd;
     }
     *{box-sizing:border-box;margin:0;padding:0}
-    body{display:grid;place-items:center;height:100vh;background:#111;font:600 15px/1.5 ui-sans-serif,system-ui;color:var(--ink)}
-    .wrap{width:min(420px,96vw);padding:12px;border-radius:16px;background:#000;box-shadow:0 20px 60px rgba(0,0,0,.6);}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-    h1{font-size:18px}
-    .btn{border:0;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer}
-    .btn.start{background:#27ae60;color:#fff}
+    body{display:grid;place-items:center;min-height:100vh;background:linear-gradient(180deg,#0b0b10,#121219);font:600 15px/1.5 ui-sans-serif,system-ui;color:var(--ink)}
+    .wrap{width:min(440px,96vw);padding:14px;border-radius:16px;background:#000;box-shadow:0 26px 70px rgba(0,0,0,.55);position:relative;overflow:hidden}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    h1{font-size:18px;letter-spacing:.3px}
+    .btn{border:0;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
+    .btn.start{background:#21bf73;color:#00140a}
     .btn.pause{background:#f39c12;color:#000}
     canvas{display:block;width:100%;height:auto;border-radius:12px;background:var(--road)}
-    .hud{display:flex;justify-content:space-between;margin-top:6px;font-size:14px;color:var(--muted)}
+    .hud{display:flex;justify-content:space-between;margin-top:8px;font-size:14px;color:var(--muted)}
+    .overlay{position:absolute;inset:14px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(0,0,0,.82));backdrop-filter:blur(4px)}
+    .card{max-width:90%;text-align:center}
+    .card h2{margin-bottom:8px}
+    .rules{color:var(--muted);font-weight:600;font-size:14px;margin:8px 0 12px}
+    kbd{background:#161820;border:1px solid #232633;border-radius:6px;padding:2px 6px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>🏎 American Racer</h1>
+      <h1>🏁 American Racer</h1>
       <div>
         <button id="btnStart" class="btn start">Start</button>
         <button id="btnPause" class="btn pause">Pause</button>
       </div>
     </header>
-    <canvas id="game" width="360" height="540"></canvas>
+
+    <canvas id="game" width="380" height="560"></canvas>
+
     <div class="hud">
       <div>Score: <span id="score">0</span></div>
       <div>Lives: <span id="lives">3</span></div>
       <div>Speed: <span id="speed">1x</span></div>
     </div>
+
+    <div id="overlay" class="overlay" hidden>
+      <div class="card">
+        <h2>How to Play</h2>
+        <div class="rules">
+          Use <kbd>←</kbd> <kbd>→</kbd> to steer. Avoid <span style="color:var(--enemy)">red cars</span>.
+          Collect <span style="color:var(--fuel)">fuel cans</span> for +10 points.
+        </div>
+        <div class="rules">Press <kbd>Space</kbd> or click <strong>Start</strong> to begin.</div>
+        <button class="btn start" id="overlayStart">Start</button>
+      </div>
+    </div>
   </div>
 <script>
-const canvas=document.getElementById('game');
-const ctx=canvas.getContext('2d');
-const scoreEl=document.getElementById('score');
-const livesEl=document.getElementById('lives');
-const speedEl=document.getElementById('speed');
-const btnStart=document.getElementById('btnStart');
-const btnPause=document.getElementById('btnPause');
+// ======= American Racer (Arcade, keyboard left/right) =======
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const speedEl = document.getElementById('speed');
+const btnStart = document.getElementById('btnStart');
+const btnPause = document.getElementById('btnPause');
+const overlay = document.getElementById('overlay');
+const overlayStart = document.getElementById('overlayStart');
 
-const S={running:false,score:0,lives:3,speed:1,player:{x:160,y:440,w:40,h:70},enemies:[],fuels:[],time:0};
+const lanes = [70, 150, 230, 310]; // x centers for 4 lanes
+const carW = 46, carH = 78;
 
-// controls
-const keys=new Set();
-addEventListener('keydown',e=>{keys.add(e.key.toLowerCase()); if(e.key===' '){boost();}});
-addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
-canvas.addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect(); S.player.x=(e.clientX-r.left)-S.player.w/2;});
-canvas.addEventListener('pointerdown',()=>boost());
-btnStart.onclick=()=>start(true);
-btnPause.onclick=()=>toggle();
+const S = {
+  running:false, started:false,
+  score:0, lives:3, speed:1,
+  player:{x:lanes[1]-carW/2, y:canvas.height-carH-20, w:carW, h:carH, color:getCss('--player')},
+  enemies:[], fuels:[],
+  lastEnemy:0, lastFuel:0
+};
 
-function start(reset){if(reset){S.score=0;S.lives=3;S.speed=1;S.enemies=[];S.fuels=[];} S.running=true;}
-function toggle(){S.running=!S.running;}
-function boost(){if(!S.running)return;S.speed=2;setTimeout(()=>S.speed=1,1500);}
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 
-function spawn(){if(Math.random()<0.04){ // enemy car
-  const lane=[60,140,220,300][Math.floor(Math.random()*4)];
-  S.enemies.push({x:lane,y:-80,w:40,h:70});
+// Controls — keyboard left/right; Space to start
+const keys = new Set();
+addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  if(k==='arrowleft' || k==='arrowright') keys.add(k);
+  if(e.code==='Space') { if(!S.started) start(true); e.preventDefault(); }
+});
+addEventListener('keyup', e=>{ const k=e.key.toLowerCase(); keys.delete(k);});
+
+btnStart.onclick = ()=> start(!S.started);
+overlayStart.onclick = ()=> start(!S.started);
+btnPause.onclick = ()=> toggle();
+
+function start(reset){
+  if(reset || !S.started){
+    S.score=0; S.lives=3; S.speed=1; S.enemies=[]; S.fuels=[]; S.lastEnemy=0; S.lastFuel=0;
+  }
+  S.started=true; S.running=true; overlay.hidden=true;
 }
-if(Math.random()<0.01){ // fuel
-  const lane=[60,140,220,300][Math.floor(Math.random()*4)];
-  S.fuels.push({x:lane,y:-40,w:30,h:30});
-}}
+function toggle(){ if(!S.started) return; S.running=!S.running; }
 
-function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
-function drawRoad(){ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--road');ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--line');ctx.lineWidth=6;ctx.setLineDash([30,30]);ctx.beginPath();ctx.moveTo(canvas.width/2,0);ctx.lineTo(canvas.width/2,canvas.height);ctx.stroke();ctx.setLineDash([]);}
+// Spawn controls (fewer obstacles)
+function trySpawn(time){
+  // enemy every 800–1200ms
+  if(time - S.lastEnemy > rand(800,1200)){
+    S.lastEnemy = time;
+    const lane = lanes[Math.floor(Math.random()*lanes.length)];
+    // ensure not same lane as previous enemy (smoother)
+    const prev = S.enemies[S.enemies.length-1];
+    const x = (prev && Math.random()<0.6) ? pickOtherLane(prev.x) : lane;
+    S.enemies.push({x:x - carW/2, y:-carH, w:carW, h:carH, color:getCss('--enemy')});
+  }
+  // fuel every 2500–3500ms
+  if(time - S.lastFuel > rand(2500,3500)){
+    S.lastFuel = time;
+    const lane = lanes[Math.floor(Math.random()*lanes.length)];
+    S.fuels.push({x:lane-16, y:-32, w:32, h:32});
+  }
+}
+function pickOtherLane(prevX){
+  const prevCenter = prevX + carW/2; const idx = lanes.findIndex(c=>Math.abs(c-prevCenter)<2);
+  let ni = (idx + (Math.random()<0.5?-1:1) + lanes.length) % lanes.length; return lanes[ni];
+}
 
-function loop(){ctx.clearRect(0,0,canvas.width,canvas.height);drawRoad();
-  if(S.running){S.time+=0.016*S.speed;spawn();
-    // move player
-    if(keys.has('arrowleft')||keys.has('a'))S.player.x-=6*S.speed;
-    if(keys.has('arrowright')||keys.has('d'))S.player.x+=6*S.speed;
-    S.player.x=Math.max(20,Math.min(canvas.width-60,S.player.x));
+// Drawing helpers
+function rand(a,b){return Math.random()*(b-a)+a}
+function rect(x,y,w,h,c){ctx.fillStyle=c; ctx.fillRect(x,y,w,h);}
+function roundedRect(x,y,w,h,r,c){ctx.fillStyle=c; ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill();}
 
-    // move enemies
-    for(const e of S.enemies)e.y+=4*S.speed*3;
-    for(const f of S.fuels)f.y+=4*S.speed*3;
+function drawRoad(time){
+  // road body
+  rect(0,0,canvas.width,canvas.height,getCss('--road'));
+  // edges
+  rect(0,0,10,canvas.height,getCss('--edge')); rect(canvas.width-10,0,10,canvas.height,getCss('--edge'));
+  // dashed center line (two stripes)
+  ctx.strokeStyle=getCss('--line'); ctx.lineWidth=6; ctx.setLineDash([26,30]);
+  ctx.beginPath(); ctx.moveTo(canvas.width/2, (time/8)%56 - 56); ctx.lineTo(canvas.width/2, canvas.height+56); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawCar(x,y,color){
+  // body
+  const r=10; roundedRect(x,y,carW,carH,r,color);
+  // windows
+  const win = getCss('--win');
+  roundedRect(x+8, y+10, carW-16, 18, 6, win);
+  roundedRect(x+8, y+36, carW-16, 14, 5, win.replace(')',',.85)'));
+  // chrome stripe
+  rect(x+carW/2-2, y+12, 4, carH-24, getCss('--chrome'));
+  // wheels
+  ctx.fillStyle='#111'; roundedRect(x-6, y+14, 10, 22, 4, '#111'); roundedRect(x+carW-4, y+14, 10, 22, 4, '#111');
+  roundedRect(x-6, y+carH-36, 10, 22, 4, '#111'); roundedRect(x+carW-4, y+carH-36, 10, 22, 4, '#111');
+  // headlights / tail
+  rect(x+10, y-4, 8, 6, '#fff8c2'); rect(x+carW-18, y-4, 8, 6, '#fff8c2');
+  rect(x+10, y+carH-2, 10, 4, 'rgba(255,80,80,.9)'); rect(x+carW-20, y+carH-2, 10, 4, 'rgba(255,80,80,.9)');
+}
+
+function drawFuel(f){
+  // little jerrycan icon
+  const c = getCss('--fuel');
+  roundedRect(f.x, f.y, f.w, f.h, 6, c);
+  ctx.fillStyle='#fff'; ctx.fillRect(f.x+10, f.y+12, 12, 8); // label
+}
+
+function hit(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+
+// Loop
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.03, (now-last)/1000); last = now;
+  drawRoad(now*0.1);
+
+  if(S.running){
+    trySpawn(now);
+    // player move (left/right only)
+    const step = 220 * dt * S.speed;
+    if(keys.has('arrowleft')) S.player.x -= step;
+    if(keys.has('arrowright')) S.player.x += step;
+    // clamp within road
+    S.player.x = Math.max(18, Math.min(canvas.width - carW - 18, S.player.x));
+
+    // move enemies & fuels
+    for(const e of S.enemies) e.y += (180 + 40) * dt * S.speed;
+    for(const f of S.fuels)   f.y += (180 + 40) * dt * S.speed;
 
     // collisions
-    for(let i=S.enemies.length-1;i>=0;i--){const e=S.enemies[i];if(hit(S.player,e)){S.enemies.splice(i,1);S.lives--;if(S.lives<=0)S.running=false;}}
-    for(let i=S.fuels.length-1;i>=0;i--){const f=S.fuels[i];if(hit(S.player,f)){S.fuels.splice(i,1);S.score+=10;}}
+    for(let i=S.enemies.length-1;i>=0;i--){ const e=S.enemies[i]; if(hit(S.player, e)){ S.enemies.splice(i,1); S.lives--; if(S.lives<=0){ S.running=false; showOverlay('Game Over', 'Press Space or Start to play again'); } } }
+    for(let i=S.fuels.length-1;i>=0;i--){ const f=S.fuels[i]; if(hit(S.player, f)){ S.fuels.splice(i,1); S.score += 10; } }
 
-    // remove offscreen
-    S.enemies=S.enemies.filter(e=>e.y<canvas.height+100);
-    S.fuels=S.fuels.filter(f=>f.y<canvas.height+100);
+    // cleanup
+    S.enemies = S.enemies.filter(e=> e.y < canvas.height + 100);
+    S.fuels   = S.fuels.filter(f=> f.y < canvas.height + 100);
 
-    S.score+=1*S.speed;
+    // score over time
+    S.score += Math.floor(20 * dt * S.speed);
   }
-  // draw fuels
-  for(const f of S.fuels)rect(f.x,f.y,f.w,f.h,getComputedStyle(document.documentElement).getPropertyValue('--fuel'));
-  // draw enemies
-  for(const e of S.enemies)rect(e.x,e.y,e.w,e.h,getComputedStyle(document.documentElement).getPropertyValue('--enemy'));
-  // draw player
-  rect(S.player.x,S.player.y,S.player.w,S.player.h,getComputedStyle(document.documentElement).getPropertyValue('--player'));
 
-  scoreEl.textContent=S.score; livesEl.textContent=S.lives; speedEl.textContent=S.speed+"x";
+  // draw entities
+  for(const f of S.fuels) drawFuel(f);
+  for(const e of S.enemies) drawCar(e.x, e.y, e.color);
+  drawCar(S.player.x, S.player.y, S.player.color);
+
+  // HUD sync
+  scoreEl.textContent = S.score;
+  livesEl.textContent = S.lives;
+  speedEl.textContent = S.speed + 'x';
+
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
-function hit(a,b){return a.x<a.x+a.w && a.x+b.w>a.x && a.x<a.x+a.w && a.y+b.h>a.y && a.x<a.x+a.w && a.y<a.y+a.h && a.x+b.w>a.x && a.y<a.y+a.h && a.x<b.x+b.w && a.y<a.y+a.h && a.y+b.h>a.y && a.x+a.w>b.x && a.y+a.h>b.y && a.x<b.x+b.w && a.y<b.y+b.h;}
+function showOverlay(title, subtitle){
+  overlay.hidden = false;
+  overlay.querySelector('h2').textContent = title || 'How to Play';
+  const rules = overlay.querySelectorAll('.rules');
+  if(subtitle){ rules[1].innerHTML = subtitle; }
+}
+// show rules on load
+showOverlay();
 </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>American Racer — JS Arcade</title>
+  <style>
+    :root{
+      --road:#1f1f1f; --edge:#0e0e0e; --line:#f5d142;
+      --player:#21bf73; --enemy:#e74c3c; --fuel:#2d9cdb; --win:#cde8ff; --chrome:#eaeaea;
+      --ink:#fff; --muted:#aab0bd;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{display:grid;place-items:center;min-height:100vh;background:linear-gradient(180deg,#0b0b10,#121219);font:600 15px/1.5 ui-sans-serif,system-ui;color:var(--ink)}
+    .wrap{width:min(440px,96vw);padding:14px;border-radius:16px;background:#000;box-shadow:0 26px 70px rgba(0,0,0,.55);position:relative;overflow:hidden}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    h1{font-size:18px;letter-spacing:.3px}
+    .btn{border:0;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
+    .btn.start{background:#21bf73;color:#00140a}
+    .btn.pause{background:#f39c12;color:#000}
+    canvas{display:block;width:100%;height:auto;border-radius:12px;background:var(--road)}
+    .hud{display:flex;justify-content:space-between;margin-top:8px;font-size:14px;color:var(--muted)}
+    .overlay{position:absolute;inset:14px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(0,0,0,.82));backdrop-filter:blur(4px)}
+    .card{max-width:90%;text-align:center}
+    .card h2{margin-bottom:8px}
+    .rules{color:var(--muted);font-weight:600;font-size:14px;margin:8px 0 12px}
+    kbd{background:#161820;border:1px solid #232633;border-radius:6px;padding:2px 6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🏁 American Racer</h1>
+      <div>
+        <button id="btnStart" class="btn start">Start</button>
+        <button id="btnPause" class="btn pause">Pause</button>
+      </div>
+    </header>
+
+    <canvas id="game" width="380" height="560"></canvas>
+
+    <div class="hud">
+      <div>Score: <span id="score">0</span></div>
+      <div>Lives: <span id="lives">3</span></div>
+      <div>Speed: <span id="speed">1x</span></div>
+    </div>
+
+    <div id="overlay" class="overlay" hidden>
+      <div class="card">
+        <h2>How to Play</h2>
+        <div class="rules">
+          Use <kbd>←</kbd> <kbd>→</kbd> to steer. Avoid <span style="color:var(--enemy)">red cars</span>.
+          Collect <span style="color:var(--fuel)">fuel cans</span> for +10 points.
+        </div>
+        <div class="rules">Press <kbd>Space</kbd> or click <strong>Start</strong> to begin.</div>
+        <button class="btn start" id="overlayStart">Start</button>
+      </div>
+    </div>
+  </div>
+<script>
+// ======= American Racer (Arcade, keyboard left/right) =======
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const speedEl = document.getElementById('speed');
+const btnStart = document.getElementById('btnStart');
+const btnPause = document.getElementById('btnPause');
+const overlay = document.getElementById('overlay');
+const overlayStart = document.getElementById('overlayStart');
+
+const lanes = [70, 150, 230, 310]; // x centers for 4 lanes
+const carW = 46, carH = 78;
+
+const S = {
+  running:false, started:false,
+  score:0, lives:3, speed:1,
+  player:{x:lanes[1]-carW/2, y:canvas.height-carH-20, w:carW, h:carH, color:getCss('--player')},
+  enemies:[], fuels:[],
+  lastEnemy:0, lastFuel:0
+};
+
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+// Controls — keyboard left/right; Space to start
+const keys = new Set();
+addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  if(k==='arrowleft' || k==='arrowright') keys.add(k);
+  if(e.code==='Space') { if(!S.started) start(true); e.preventDefault(); }
+});
+addEventListener('keyup', e=>{ const k=e.key.toLowerCase(); keys.delete(k);});
+
+btnStart.onclick = ()=> start(!S.started);
+overlayStart.onclick = ()=> start(!S.started);
+btnPause.onclick = ()=> toggle();
+
+function start(reset){
+  if(reset || !S.started){
+    S.score=0; S.lives=3; S.speed=1; S.enemies=[]; S.fuels=[]; S.lastEnemy=0; S.lastFuel=0;
+  }
+  S.started=true; S.running=true; overlay.hidden=true;
+}
+function toggle(){ if(!S.started) return; S.running=!S.running; }
+
+// Spawn controls (fewer obstacles)
+function trySpawn(time){
+  // enemy every 800–1200ms
+  if(time - S.lastEnemy > rand(800,1200)){
+    S.lastEnemy = time;
+    const lane = lanes[Math.floor(Math.random()*lanes.length)];
+    // ensure not same lane as previous enemy (smoother)
+    const prev = S.enemies[S.enemies.length-1];
+    const x = (prev && Math.random()<0.6) ? pickOtherLane(prev.x) : lane;
+    S.enemies.push({x:x - carW/2, y:-carH, w:carW, h:carH, color:getCss('--enemy')});
+  }
+  // fuel every 2500–3500ms
+  if(time - S.lastFuel > rand(2500,3500)){
+    S.lastFuel = time;
+    const lane = lanes[Math.floor(Math.random()*lanes.length)];
+    S.fuels.push({x:lane-16, y:-32, w:32, h:32});
+  }
+}
+function pickOtherLane(prevX){
+  const prevCenter = prevX + carW/2; const idx = lanes.findIndex(c=>Math.abs(c-prevCenter)<2);
+  let ni = (idx + (Math.random()<0.5?-1:1) + lanes.length) % lanes.length; return lanes[ni];
+}
+
+// Drawing helpers
+function rand(a,b){return Math.random()*(b-a)+a}
+function rect(x,y,w,h,c){ctx.fillStyle=c; ctx.fillRect(x,y,w,h);}
+function roundedRect(x,y,w,h,r,c){ctx.fillStyle=c; ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill();}
+
+function drawRoad(time){
+  // road body
+  rect(0,0,canvas.width,canvas.height,getCss('--road'));
+  // edges
+  rect(0,0,10,canvas.height,getCss('--edge')); rect(canvas.width-10,0,10,canvas.height,getCss('--edge'));
+  // dashed center line (two stripes)
+  ctx.strokeStyle=getCss('--line'); ctx.lineWidth=6; ctx.setLineDash([26,30]);
+  ctx.beginPath(); ctx.moveTo(canvas.width/2, (time/8)%56 - 56); ctx.lineTo(canvas.width/2, canvas.height+56); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawCar(x,y,color){
+  // body
+  const r=10; roundedRect(x,y,carW,carH,r,color);
+  // windows
+  const win = getCss('--win');
+  roundedRect(x+8, y+10, carW-16, 18, 6, win);
+  roundedRect(x+8, y+36, carW-16, 14, 5, win.replace(')',',.85)'));
+  // chrome stripe
+  rect(x+carW/2-2, y+12, 4, carH-24, getCss('--chrome'));
+  // wheels
+  ctx.fillStyle='#111'; roundedRect(x-6, y+14, 10, 22, 4, '#111'); roundedRect(x+carW-4, y+14, 10, 22, 4, '#111');
+  roundedRect(x-6, y+carH-36, 10, 22, 4, '#111'); roundedRect(x+carW-4, y+carH-36, 10, 22, 4, '#111');
+  // headlights / tail
+  rect(x+10, y-4, 8, 6, '#fff8c2'); rect(x+carW-18, y-4, 8, 6, '#fff8c2');
+  rect(x+10, y+carH-2, 10, 4, 'rgba(255,80,80,.9)'); rect(x+carW-20, y+carH-2, 10, 4, 'rgba(255,80,80,.9)');
+}
+
+function drawFuel(f){
+  // little jerrycan icon
+  const c = getCss('--fuel');
+  roundedRect(f.x, f.y, f.w, f.h, 6, c);
+  ctx.fillStyle='#fff'; ctx.fillRect(f.x+10, f.y+12, 12, 8); // label
+}
+
+function hit(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+
+// Loop
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.03, (now-last)/1000); last = now;
+  drawRoad(now*0.1);
+
+  if(S.running){
+    trySpawn(now);
+    // player move (left/right only)
+    const step = 220 * dt * S.speed;
+    if(keys.has('arrowleft')) S.player.x -= step;
+    if(keys.has('arrowright')) S.player.x += step;
+    // clamp within road
+    S.player.x = Math.max(18, Math.min(canvas.width - carW - 18, S.player.x));
+
+    // move enemies & fuels
+    for(const e of S.enemies) e.y += (180 + 40) * dt * S.speed;
+    for(const f of S.fuels)   f.y += (180 + 40) * dt * S.speed;
+
+    // collisions
+    for(let i=S.enemies.length-1;i>=0;i--){ const e=S.enemies[i]; if(hit(S.player, e)){ S.enemies.splice(i,1); S.lives--; if(S.lives<=0){ S.running=false; showOverlay('Game Over', 'Press Space or Start to play again'); } } }
+    for(let i=S.fuels.length-1;i>=0;i--){ const f=S.fuels[i]; if(hit(S.player, f)){ S.fuels.splice(i,1); S.score += 10; } }
+
+    // cleanup
+    S.enemies = S.enemies.filter(e=> e.y < canvas.height + 100);
+    S.fuels   = S.fuels.filter(f=> f.y < canvas.height + 100);
+
+    // score over time
+    S.score += Math.floor(20 * dt * S.speed);
+  }
+
+  // draw entities
+  for(const f of S.fuels) drawFuel(f);
+  for(const e of S.enemies) drawCar(e.x, e.y, e.color);
+  drawCar(S.player.x, S.player.y, S.player.color);
+
+  // HUD sync
+  scoreEl.textContent = S.score;
+  livesEl.textContent = S.lives;
+  speedEl.textContent = S.speed + 'x';
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function showOverlay(title, subtitle){
+  overlay.hidden = false;
+  overlay.querySelector('h2').textContent = title || 'How to Play';
+  const rules = overlay.querySelectorAll('.rules');
+  if(subtitle){ rules[1].innerHTML = subtitle; }
+}
+// show rules on load
+showOverlay();
+</script>
+</body>
+</html>
+
