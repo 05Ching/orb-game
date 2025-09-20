@@ -3,268 +3,196 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Orb Catcher — vibe-coded JS mini game</title>
+  <title>Space Blaster — neon JS shooter</title>
   <style>
-    :root {
-      --bg: #0b1020;
-      --ink: #e6f0ff;
-      --accent: #7aa2ff;
-      --accent-2: #7fffd4;
-      --danger: #ff6b6b;
-      --muted: #9aa3b2;
+    :root{
+      --bg:#070a15; --ink:#eaf2ff; --muted:#9aa7bb; --cy:#7ee6ff; --vi:#9f7bff; --pk:#ff79c6; --yl:#ffd166; --rd:#ff6b6b;
     }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0; display: grid; place-items: center; gap: 12px;
-      background: radial-gradient(1000px 700px at 50% -20%, #1b2240, var(--bg));
-      color: var(--ink); font: 500 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", sans-serif;
-    }
-    .wrap {
-      width: min(920px, 96vw); padding: 16px; border-radius: 16px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-      box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.06);
-    }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-    h1 { margin: 0; font-size: 18px; letter-spacing: 0.4px; color: var(--ink); opacity: 0.9; }
-    .meta { display: flex; gap: 12px; align-items: center; color: var(--muted); }
-    .btn {
-      appearance: none; border: 0; padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: 600; letter-spacing: 0.3px;
-      color: #0b1020; background: var(--accent);
-      box-shadow: 0 6px 20px rgba(122,162,255,0.4);
-    }
-    .btn:active { transform: translateY(1px); }
-
-    canvas { width: 100%; height: auto; border-radius: 16px; display: block; background: linear-gradient(180deg, #0b1020, #060914); }
-
-    .hud { display: grid; grid-template-columns: repeat(4, max-content); gap: 16px; align-items: center; margin: 8px 0 0; }
-    .tag { padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.06); color: var(--ink); font-weight: 600; }
-
-    footer { margin-top: 8px; color: var(--muted); font-size: 13px; }
-    kbd { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;display:grid;place-items:center;background:radial-gradient(1000px 700px at 50% -20%,#1b2342,var(--bg));color:var(--ink);font:500 15px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans",sans-serif}
+    .wrap{width:min(1000px,96vw);padding:16px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));box-shadow:0 20px 60px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.06)}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+    h1{margin:0;font-size:18px;letter-spacing:.4px;opacity:.9}
+    .meta{display:flex;gap:10px;align-items:center;color:var(--muted)}
+    .btn{appearance:none;border:0;padding:9px 14px;border-radius:12px;cursor:pointer;font-weight:700;letter-spacing:.3px;color:#071018;background:var(--cy);box-shadow:0 6px 18px rgba(126,230,255,.35)}
+    .btn.alt{background:var(--vi);color:#0c0f1c;box-shadow:0 6px 18px rgba(159,123,255,.35)}
+    .btn:active{transform:translateY(1px)}
+    canvas{width:100%;height:auto;display:block;border-radius:16px;background:linear-gradient(180deg,#050812,#03060e)}
+    .hud{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+    .tag{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);font-weight:700}
+    footer{margin-top:8px;color:var(--muted);font-size:13px}
+    kbd{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.1)}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>🟣 Orb Catcher — tiny JS game</h1>
+      <h1>🚀 Space Blaster — neon shooter</h1>
       <div class="meta">
-        <button id="btnPause" class="btn" title="Pause/Resume (P)">Pause</button>
-        <button id="btnReset" class="btn" title="Restart (R)">Restart</button>
+        <button id="btnStart" class="btn">Start</button>
+        <button id="btnPause" class="btn alt">Pause</button>
       </div>
     </header>
 
-    <canvas id="game" width="900" height="520"></canvas>
+    <canvas id="game" width="960" height="540"></canvas>
 
     <div class="hud">
       <div class="tag">Score: <span id="score">0</span></div>
       <div class="tag">Lives: <span id="lives">3</span></div>
-      <div class="tag">Level: <span id="level">1</span></div>
+      <div class="tag">Wave: <span id="wave">1</span></div>
       <div class="tag">Best: <span id="best">0</span></div>
     </div>
 
     <footer>
-      Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or ⬅️⬆️⬇️➡️. Catch <span style="color:var(--accent-2)">glow orbs</span>, avoid <span style="color:var(--danger)">red bombs</span>.
-      <strong>P</strong> to pause, <strong>R</strong> to restart. Touch/drag anywhere on mobile.
+      Move with <kbd>A</kbd><kbd>W</kbd><kbd>S</kbd><kbd>D</kbd> or ⬅️⬆️⬇️➡️. Shoot with <kbd>Space</kbd> / click. <strong>P</strong> pause, <strong>R</strong> restart. Mobile：拖曳移動、點擊射擊。
     </footer>
   </div>
 
-  <script>
-  // vibe coding mode: readable, tweakable, zero deps
-  const canvas = document.getElementById('game');
-  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  const ctx = canvas.getContext('2d');
-  // scale canvas for crispness
-  function resize() {
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round((rect.width * 0.577) * dpr); // keep 16:9-ish
+<script>
+// ——— Space Blaster — single‑file, zero deps ———
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const dpr = Math.max(1, Math.min(2, window.devicePixelRatio||1));
+function fit(){ const r = canvas.getBoundingClientRect(); canvas.width=Math.round(r.width*dpr); canvas.height=Math.round(r.width*9/16*dpr); }
+fit(); addEventListener('resize', fit);
+
+// UI
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const waveEl = document.getElementById('wave');
+const bestEl = document.getElementById('best');
+const btnStart = document.getElementById('btnStart');
+const btnPause = document.getElementById('btnPause');
+
+// Sound (tiny WebAudio beeps)
+const AC = window.AudioContext||window.webkitAudioContext; const actx = new AC();
+function beep(type='triangle', f=440, t=0.08, g=0.15){ const o=actx.createOscillator(), v=actx.createGain(); o.type=type; o.frequency.value=f; v.gain.value=g; o.connect(v); v.connect(actx.destination); const now=actx.currentTime; o.start(now); v.gain.exponentialRampToValueAtTime(0.0001, now+t); o.stop(now+t); }
+
+// Helper
+const R = (a,b)=>Math.random()*(b-a)+a; const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+// Game state
+const S = {
+  running:false, started:false,
+  score:0, lives:3, wave:1, best:Number(localStorage.getItem('sb_best')||0),
+  time:0, keys:new Set(),
+  ship:{x:120, y:0, r:14, speed:320, cd:0},
+  shots:[], enemies:[], particles:[], powerups:[]
+};
+S.ship.y = canvas.height - 80*dpr;
+bestEl.textContent = S.best;
+
+// Controls
+addEventListener('keydown', e=>{const k=e.key.toLowerCase(); if(['arrowleft','arrowright','arrowup','arrowdown','a','d','w','s'].includes(k)) S.keys.add(k);
+  if(k===' '){ shoot(); e.preventDefault(); }
+  if(k==='p') toggle(); if(k==='r') start(true);
+});
+addEventListener('keyup', e=> S.keys.delete(e.key.toLowerCase()));
+canvas.addEventListener('pointerdown', e=>{ moveTo(e); shoot(); });
+canvas.addEventListener('pointermove', e=>{ if(e.buttons) moveTo(e); });
+function moveTo(e){ const r=canvas.getBoundingClientRect(); S.ship.x=(e.clientX-r.left)*dpr; S.ship.y=(e.clientY-r.top)*dpr; }
+btnStart.onclick=()=>start(!S.started);
+btnPause.onclick=toggle;
+
+function start(reset=false){ if(reset||!S.started){ S.score=0; S.lives=3; S.wave=1; S.shots=[]; S.enemies=[]; S.particles=[]; S.powerups=[]; S.time=0; S.started=true; }
+  S.running=true; btnPause.textContent='Pause'; beep('sawtooth',640,0.08,0.12);
+}
+function toggle(){ S.running=!S.running; btnPause.textContent=S.running?'Pause':'Resume'; if(S.running) actx.resume(); }
+
+// Entities
+function spawnWave(){
+  const n = 6 + S.wave*2; // enemies per wave
+  for(let i=0;i<n;i++){
+    const y = R(40*dpr, 160*dpr);
+    const x = R(40*dpr, canvas.width-40*dpr);
+    const v = 40 + S.wave*8 + R(-10,10);
+    S.enemies.push({x,y,r:16*dpr,hp:1+Math.floor(S.wave/3), vx:R(-40,40), vy:R(20,60), base:v });
   }
-  resize();
-  addEventListener('resize', resize);
+}
+function shoot(){ if(!S.running) return; if(S.ship.cd>0) return; S.ship.cd=0.18; const bspd=520; S.shots.push({x:S.ship.x, y:S.ship.y-18*dpr, r:3*dpr, vy:-bspd});
+  // twin shot powerup for higher waves
+  if(S.wave>=5) S.shots.push({x:S.ship.x+10*dpr,y:S.ship.y-18*dpr,r:3*dpr,vy:-bspd});
+  beep('triangle',880,0.05,0.08);
+}
 
-  // --- game state ---
-  const state = {
-    running: true,
-    score: 0,
-    best: Number(localStorage.getItem('orb_best') || 0),
-    lives: 3,
-    level: 1,
-    time: 0,
-    player: { x: 120, y: 120, r: 16 * dpr, speed: 260 },
-    vx: 0, vy: 0,
-    keys: new Set(),
-    orbs: [], // {x,y,r,vy,type}
-    lastSpawn: 0,
-  };
+function explode(x,y,n=20,clr='#9f7bff'){ for(let i=0;i<n;i++){ S.particles.push({x,y, vx:R(-180,180), vy:R(-180,180), life:R(0.3,0.7), r:R(1.5,3)*dpr, c:clr}); } }
 
-  // UI bindings
-  scoreEl = document.getElementById('score');
-  livesEl = document.getElementById('lives');
-  levelEl = document.getElementById('level');
-  bestEl = document.getElementById('best');
-  bestEl.textContent = state.best;
-  btnPause = document.getElementById('btnPause');
-  btnReset = document.getElementById('btnReset');
-  btnPause.onclick = () => togglePause();
-  btnReset.onclick = () => restart();
+function drop(x,y){ if(Math.random()<0.15){ S.powerups.push({x,y,r:10*dpr, vy:80, kind: Math.random()<0.5?'shield':'rapid', t:6}); } }
 
-  // controls: keyboard
-  addEventListener('keydown', (e) => {
-    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d','W','A','S','D'].includes(e.key)) {
-      state.keys.add(e.key.toLowerCase());
-    }
-    if (e.key === 'p' || e.key === 'P') togglePause();
-    if (e.key === 'r' || e.key === 'R') restart();
-  });
-  addEventListener('keyup', (e) => state.keys.delete(e.key.toLowerCase()));
+// Math helpers
+function hit(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy <= (a.r+b.r)*(a.r+b.r); }
 
-  // controls: touch / drag to move
-  let touchID = null;
-  canvas.addEventListener('pointerdown', (e) => { touchID = e.pointerId; moveToPointer(e); });
-  canvas.addEventListener('pointermove', (e) => { if (touchID === e.pointerId) moveToPointer(e); });
-  addEventListener('pointerup', (e) => { if (touchID === e.pointerId) touchID = null; });
-  function moveToPointer(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * dpr;
-    const y = (e.clientY - rect.top) * dpr;
-    state.player.x = x; state.player.y = y;
+// Drawing
+function glow(x,y,r,c1,c2){ const g=ctx.createRadialGradient(x,y,r*0.1,x,y,r); g.addColorStop(0,c1); g.addColorStop(1,c2); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); }
+function text(t,x,y,s=16,align='left',c='#eaf2ff'){ ctx.font=`${Math.round(s*dpr)}px ui-sans-serif,system-ui`; ctx.textAlign=align; ctx.fillStyle=c; ctx.fillText(t,x,y); }
+
+// Backdrop stars
+const stars = Array.from({length:120},(_,i)=>({x:Math.random(), y:Math.random(), z:R(0.3,1.2)}));
+function drawStars(dt){ ctx.save(); for(const s of stars){ s.y += dt*0.02*s.z; if(s.y>1) s.y-=1; const x=s.x*canvas.width, y=s.y*canvas.height; ctx.globalAlpha=0.4*s.z; glow(x,y,1.8*dpr,'#bfe1ff','transparent'); } ctx.restore(); }
+
+let last=performance.now();
+function loop(now){ const dt=Math.min(0.033,(now-last)/1000); last=now; ctx.clearRect(0,0,canvas.width,canvas.height); drawStars(dt);
+  // attract neon grid
+  ctx.globalAlpha=0.15; ctx.strokeStyle='rgba(126,230,255,.4)'; ctx.lineWidth=1*dpr; ctx.beginPath(); for(let x=0;x<canvas.width;x+=40*dpr){ ctx.moveTo(x,0); ctx.lineTo(x,canvas.height);} for(let y=0;y<canvas.height;y+=40*dpr){ ctx.moveTo(0,y); ctx.lineTo(canvas.width,y);} ctx.stroke(); ctx.globalAlpha=1;
+
+  // spawn waves
+  if(S.running){ S.time+=dt; if(S.enemies.length===0 && S.shots.length===0){ spawnWave(); }
+    // ship move
+    const p=S.ship, sp=p.speed*dpr*dt; if(S.keys.has('arrowleft')||S.keys.has('a')) p.x-=sp; if(S.keys.has('arrowright')||S.keys.has('d')) p.x+=sp; if(S.keys.has('arrowup')||S.keys.has('w')) p.y-=sp; if(S.keys.has('arrowdown')||S.keys.has('s')) p.y+=sp; p.x=clamp(p.x, 20*dpr, canvas.width-20*dpr); p.y=clamp(p.y, 40*dpr, canvas.height-20*dpr); if(p.cd>0) p.cd-=dt; }
+
+  // enemies
+  for(const e of S.enemies){ if(S.running){ e.x+=e.vx*dt; e.y+=e.vy*dt*0.6; if(e.x<20*dpr||e.x>canvas.width-20*dpr) e.vx*=-1; if(Math.random()<0.002*S.wave) S.shots.push({x:e.x,y:e.y+14*dpr,r:3*dpr,vy:220}); }
+    glow(e.x,e.y,e.r,'#ffc3a1','rgba(255,99,71,0)'); ctx.strokeStyle='rgba(255,205,178,.6)'; ctx.lineWidth=2*dpr; ctx.beginPath(); ctx.arc(e.x,e.y,e.r*1.05,0,Math.PI*2); ctx.stroke(); }
+
+  // shots
+  for(const b of S.shots){ if(S.running) b.y += b.vy*dt; glow(b.x,b.y,b.r, b.vy<0?'#9f7bff':'#ff6b6b','transparent'); }
+  S.shots = S.shots.filter(b=>b.y>-20*dpr && b.y<canvas.height+20*dpr);
+
+  // collisions: player shots vs enemies
+  if(S.running){ for(let i=S.shots.length-1;i>=0;i--){ const b=S.shots[i]; if(b.vy>0) continue; for(let j=S.enemies.length-1;j>=0;j--){ const e=S.enemies[j]; if(hit(b,{x:e.x,y:e.y,r:e.r})) { S.shots.splice(i,1); e.hp--; explode(b.x,b.y,12,'#9f7bff'); if(e.hp<=0){ S.enemies.splice(j,1); S.score+=10; if(Math.random()<0.2) drop(e.x,e.y); beep('square',660,0.05,0.12);} break; } } } }
+
+  // enemy bullets vs player
+  if(S.running){ for(let i=S.shots.length-1;i>=0;i--){ const b=S.shots[i]; if(b.vy<=0) continue; if(hit(b,{x:S.ship.x,y:S.ship.y,r:S.ship.r*1.1})) { S.shots.splice(i,1); damage(); break; } } }
+
+  // enemies touching player
+  if(S.running){ for(let i=S.enemies.length-1;i>=0;i--){ const e=S.enemies[i]; if(hit(e,{x:S.ship.x,y:S.ship.y,r:S.ship.r})) { S.enemies.splice(i,1); explode(e.x,e.y,20,'#ff6b6b'); damage(); } } }
+
+  // powerups
+  for(const p of S.powerups){ if(S.running) p.y += p.vy*dt; glow(p.x,p.y,p.r, p.kind==='shield'?'#7ee6ff':'#ffd166','transparent'); if(S.running && hit(p,{x:S.ship.x,y:S.ship.y,r:S.ship.r*1.2})) { if(p.kind==='shield'){ S.ship.shield = (S.ship.shield||0)+2; } else { S.ship.rapid = 1.5 + (S.ship.rapid||0); S.ship.cd = Math.min(0.08, S.ship.cd); } explode(p.x,p.y,14, p.kind==='shield'?'#7ee6ff':'#ffd166'); beep('triangle',520,0.06,0.12); p.dead=true; }
   }
+  S.powerups = S.powerups.filter(p=>!p.dead && p.y<canvas.height+30*dpr);
 
-  // helpers
-  const rand = (a,b)=> Math.random()*(b-a)+a;
-  const clamp = (x,a,b)=> Math.max(a, Math.min(b,x));
+  // particles
+  for(const p of S.particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; ctx.globalAlpha=Math.max(0,p.life); glow(p.x,p.y,p.r,'#cfe5ff','transparent'); }
+  ctx.globalAlpha=1; S.particles=S.particles.filter(p=>p.life>0);
 
-  function spawnOrb(now) {
-    const w = canvas.width, h = canvas.height;
-    const type = Math.random() < 0.8 ? 'good' : 'bad';
-    const r = type === 'good' ? rand(10, 16) * dpr : rand(12,18) * dpr;
-    const speedBase = 60 + state.level * 14;
-    const vy = rand(speedBase, speedBase + 60);
-    state.orbs.push({ x: rand(r, w - r), y: -r, r, vy, type, born: now });
-  }
+  // draw ship
+  const sh=S.ship; glow(sh.x,sh.y, sh.r+1.5*dpr,'#b8c7ff','rgba(126,230,255,0)'); ctx.strokeStyle='rgba(126,230,255,.7)'; ctx.lineWidth=2*dpr; ctx.beginPath(); ctx.arc(sh.x,sh.y,sh.r*1.2,0,Math.PI*2); ctx.stroke(); if(sh.shield){ ctx.strokeStyle='rgba(126,230,255,.5)'; ctx.setLineDash([6*dpr,4*dpr]); ctx.beginPath(); ctx.arc(sh.x,sh.y, sh.r*1.7, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
 
-  function resetOrbs() { state.orbs.length = 0; state.lastSpawn = 0; }
+  // wave cleared? advance
+  if(S.running && S.enemies.length===0 && S.shots.filter(b=>b.vy>0).length===0){ S.wave++; waveEl.textContent=S.wave; text(`Wave ${S.wave}`, canvas.width/2, 60*dpr, 20,'center','#9aa7bb'); }
 
-  function restart() {
-    state.score = 0; state.lives = 3; state.level = 1; state.time = 0; resetOrbs(); state.running = true; btnPause.textContent = 'Pause';
-  }
+  // HUD in-canvas
+  text(`Score ${S.score}`, 16*dpr, 26*dpr); text(`Lives ${S.lives}`, 16*dpr, 46*dpr, 16); text(`Wave ${S.wave}`, canvas.width-16*dpr, 26*dpr, 16,'right'); text(`Best ${S.best}`, canvas.width-16*dpr, 46*dpr, 16,'right');
 
-  function togglePause() { state.running = !state.running; btnPause.textContent = state.running ? 'Pause' : 'Resume'; }
+  // DOM HUD
+  scoreEl.textContent=S.score; livesEl.textContent=S.lives; waveEl.textContent=S.wave; bestEl.textContent=S.best;
 
-  // collision check (circle-circle)
-  function hit(a, b) {
-    const dx = a.x - b.x, dy = a.y - b.y; return (dx*dx + dy*dy) <= (a.r + b.r) * (a.r + b.r);
-  }
+  // Start / GameOver overlays
+  if(!S.started){ drawCenter('Space Blaster', 'Press Start or Space', now); }
+  if(S.started && !S.running && S.lives<=0){ drawCenter('Game Over', 'Press R to restart', now); }
 
-  // drawing helpers
-  function glowCircle(x,y,r, color1, color2) {
-    const g = ctx.createRadialGradient(x,y, r*0.1, x,y,r);
-    g.addColorStop(0, color1);
-    g.addColorStop(1, color2);
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-  }
-
-  function drawText(txt, x, y, size = 16, align = 'left', color = '#e6f0ff') {
-    ctx.font = `${Math.round(size*dpr)}px ui-sans-serif, system-ui, -apple-system`;
-    ctx.textAlign = align; ctx.fillStyle = color; ctx.fillText(txt, x, y);
-  }
-
-  // main update/draw loop
-  let last = performance.now();
-  function loop(now) {
-    const dt = Math.min(0.033, (now - last) / 1000);
-    last = now;
-
-    // clear
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // backdrop stars
-    for (let i=0;i<40;i++) {
-      const x = (i*97 % canvas.width);
-      const y = (i*197 + Math.sin((now*0.0006 + i))*40) % canvas.height;
-      ctx.globalAlpha = 0.08 + (i%5)*0.02;
-      glowCircle(x,y, 2*dpr, '#cfe5ff', 'transparent');
-    }
-    ctx.globalAlpha = 1;
-
-    // spawn curve speeds up with level
-    state.time += dt;
-    const spawnEvery = Math.max(0.25, 0.9 - state.level*0.08);
-    if (state.running && (now - state.lastSpawn) / 1000 > spawnEvery) {
-      spawnOrb(now); state.lastSpawn = now;
-    }
-
-    // move player from keys
-    if (state.running) {
-      const p = state.player, s = state.player.speed * dpr;
-      const dv = s * dt;
-      if (state.keys.has('arrowleft') || state.keys.has('a')) p.x -= dv;
-      if (state.keys.has('arrowright') || state.keys.has('d')) p.x += dv;
-      if (state.keys.has('arrowup') || state.keys.has('w')) p.y -= dv;
-      if (state.keys.has('arrowdown') || state.keys.has('s')) p.y += dv;
-      p.x = clamp(p.x, p.r, canvas.width - p.r);
-      p.y = clamp(p.y, p.r, canvas.height - p.r);
-    }
-
-    // update orbs
-    for (const o of state.orbs) {
-      if (state.running) o.y += o.vy * dt * dpr * 0.5; // normalize speed for DPR
-      // draw orb
-      if (o.type === 'good') glowCircle(o.x, o.y, o.r, '#b1ffea', 'rgba(127,255,212,0)');
-      else glowCircle(o.x, o.y, o.r, '#ffb1b1', 'rgba(255,107,107,0)');
-    }
-
-    // remove offscreen
-    state.orbs = state.orbs.filter(o => o.y - o.r < canvas.height + 10*dpr);
-
-    // collisions
-    if (state.running) {
-      for (let i = state.orbs.length - 1; i >= 0; i--) {
-        const o = state.orbs[i];
-        if (hit(state.player, o)) {
-          state.orbs.splice(i,1);
-          if (o.type === 'good') {
-            state.score += 1;
-            if (state.score % 8 === 0) state.level += 1;
-          } else {
-            state.lives -= 1;
-            if (state.lives <= 0) {
-              state.running = false; btnPause.textContent = 'Resume';
-              state.best = Math.max(state.best, state.score);
-              localStorage.setItem('orb_best', String(state.best));
-            }
-          }
-        }
-      }
-    }
-
-    // draw player
-    glowCircle(state.player.x, state.player.y, state.player.r, '#b8c7ff', 'rgba(122,162,255,0)');
-    ctx.strokeStyle = 'rgba(122,162,255,0.6)';
-    ctx.lineWidth = 2*dpr; ctx.beginPath(); ctx.arc(state.player.x, state.player.y, state.player.r*1.1, 0, Math.PI*2); ctx.stroke();
-
-    // HUD overlay in-canvas
-    drawText(`Score ${state.score}`, 16*dpr, 28*dpr);
-    drawText(`Lives ${state.lives}`, 16*dpr, 50*dpr, 16);
-    drawText(`Level ${state.level}`, canvas.width - 16*dpr, 28*dpr, 16, 'right');
-    drawText(`Best ${state.best}`, canvas.width - 16*dpr, 50*dpr, 16, 'right');
-
-    // Game over text
-    if (!state.running && state.lives <= 0) {
-      drawText('Game Over', canvas.width/2, canvas.height/2 - 20*dpr, 28, 'center');
-      drawText('Press R to restart', canvas.width/2, canvas.height/2 + 10*dpr, 16, 'center', '#9aa3b2');
-    }
-
-    // update DOM HUD
-    scoreEl.textContent = state.score;
-    livesEl.textContent = state.lives;
-    levelEl.textContent = state.level;
-    bestEl.textContent = state.best;
-
-    requestAnimationFrame(loop);
-  }
   requestAnimationFrame(loop);
-  </script>
+}
+requestAnimationFrame(loop);
+
+function drawCenter(title, subtitle, now){ text(title, canvas.width/2, canvas.height/2-8*dpr, 28,'center'); text(subtitle, canvas.width/2, canvas.height/2+22*dpr, 16,'center','#9aa7bb'); }
+
+function damage(){ if(S.ship.shield){ S.ship.shield--; explode(S.ship.x,S.ship.y,14,'#7ee6ff'); beep('sine',300,0.05,0.08); return; }
+  S.lives--; explode(S.ship.x,S.ship.y,32,'#ff6b6b'); beep('sine',200,0.08,0.12);
+  if(S.lives<=0){ S.running=false; btnPause.textContent='Resume'; S.best=Math.max(S.best,S.score); localStorage.setItem('sb_best',String(S.best)); }
+}
+</script>
 </body>
 </html>
